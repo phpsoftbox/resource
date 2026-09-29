@@ -51,6 +51,33 @@ final class UserResource extends Resource
 }
 ```
 
+## Сериализация через json_encode
+
+`Resource::jsonSerialize()` делегирует в `ResourceSerializer` по умолчанию, поэтому `json_encode($resource)`
+даёт тот же payload, что и финальная сериализация: скрытые поля (`when*` с ложным условием) удаляются, вложенные
+ресурсы и `require*`-значения нормализуются. Раньше скрытое поле попадало в JSON как `{}`.
+
+Зарегистрированные transformers и `RelationStateProviderInterface` при этом не применяются — для ответов
+приложения передавайте ресурс в `ApiResponse`/Inertia с настроенным serializer или вызывайте
+`$serializer->serialize($resource)` явно.
+
+## Выпадающие списки
+
+`Resource::dropdown()` собирает опции `{value, label, meta?}` для select. Источник — объект
+`DropdownAwareInterface` или имя класса со статическим `dropdown()` (например, enum с trait `EnumOptions`);
+имя класса оборачивается в `EnumDropdownSource`.
+
+```php
+Resource::dropdown(StatusEnum::class);          // [{value: 'all', label: 'Все'}, ...опции enum]
+Resource::dropdown(StatusEnum::class, false);   // только опции enum
+Resource::dropdown($source, emptyValue: null, emptyLabel: 'Не выбрано');
+Resource::dropdown($source, ['value' => 0, 'label' => 'Любой', 'meta' => []]);
+```
+
+Второй аргумент `$prependEmpty`: `true` — добавить пустой пункт из `$emptyValue` / `$emptyLabel`
+(по умолчанию `'all'` / `'Все'`), `false` — не добавлять, массив — добавить указанный пункт.
+Класс без статического `dropdown()` приводит к `InvalidArgumentException`.
+
 ## ResourceCollection
 
 `ResourceCollection` превращает массив/итератор в список ресурсов.

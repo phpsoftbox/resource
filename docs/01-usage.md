@@ -13,6 +13,10 @@
 Ключи `data`, `meta`, `errors` присутствуют всегда.  
 При успешном ответе `errors` равен `null`, а при ошибке `data` равен `null`.
 
+При `json_encode($response)` (`ApiResponse` реализует `JsonSerializable`) `meta` и `errors.fields` всегда выводятся
+объектами — `{}` даже когда пусты, а не `[]`. `toArray()` возвращает PHP-массивы (пустая `meta` — `[]`), поэтому
+в HTTP-ответ передавайте сам `ApiResponse`, а не результат `toArray()`.
+
 ## Успешный ответ
 
 ```php

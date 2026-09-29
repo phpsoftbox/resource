@@ -19,6 +19,16 @@ final class UserResource extends Resource
 
 Если условие ложно, ключ будет исключён из ответа.
 
+Условие, значение и значение по умолчанию вычисляются, только если это `Closure` (в том числе first-class callable
+`$this->format(...)`). Строки и массивы вида `'count'`, `'system'`, `[$object, 'method']` возвращаются как есть:
+значение из данных ресурса никогда не исполняется как функция. То же правило действует для всех `when*` и
+`require*` helpers. Условие `when()` принимает `bool|Closure`.
+
+```php
+'status' => $this->when($this->isVisible, $this->status),          // строка вернётся как есть
+'title'  => $this->when(true, fn ($resource) => mb_strtoupper($resource->title)),
+```
+
 ## whenLoaded
 
 Проверяет, что атрибут/отношение уже загружено в исходный ресурс.

@@ -134,9 +134,21 @@ final class ApiResponse implements JsonSerializable
         ];
     }
 
+    /**
+     * В JSON `meta` и `errors.fields` всегда объекты (`{}`), даже пустые.
+     *
+     * @return array{data:mixed,meta:object,errors:array<string, mixed>|null}
+     */
     public function jsonSerialize(): array
     {
-        return $this->toArray();
+        $out         = $this->toArray();
+        $out['meta'] = (object) $out['meta'];
+
+        if ($this->errors !== null) {
+            $out['errors'] = $this->errors->jsonSerialize();
+        }
+
+        return $out;
     }
 
 }

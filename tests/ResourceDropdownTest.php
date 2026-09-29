@@ -6,6 +6,7 @@ namespace PhpSoftBox\Resource\Tests;
 
 use InvalidArgumentException;
 use PhpSoftBox\Resource\DropdownAwareInterface;
+use PhpSoftBox\Resource\EnumDropdownSource;
 use PhpSoftBox\Resource\Resource;
 use PhpSoftBox\Resource\ResourceDropdownAdapter;
 use PhpSoftBox\Resource\Tests\Fixtures\StatusEnum;
@@ -19,6 +20,7 @@ use function array_key_last;
 
 #[CoversClass(Resource::class)]
 #[CoversClass(ResourceDropdownAdapter::class)]
+#[CoversClass(EnumDropdownSource::class)]
 #[CoversMethod(Resource::class, 'dropdown')]
 final class ResourceDropdownTest extends TestCase
 {
@@ -149,6 +151,40 @@ final class ResourceDropdownTest extends TestCase
     }
 
     /**
+     * Проверяет, что dropdown принимает имя enum-класса со статическим dropdown().
+     *
+     * @see Resource::dropdown()
+     * @see EnumDropdownSource::dropdown()
+     */
+    #[Test]
+    public function dropdownAcceptsEnumClassName(): void
+    {
+        $options = Resource::dropdown(StatusEnum::class, false);
+
+        $this->assertSame(
+            [
+                ['value' => 'active', 'label' => 'Активен'],
+                ['value' => 'inactive', 'label' => 'Неактивен'],
+            ],
+            $options,
+        );
+    }
+
+    /**
+     * Проверяет, что значение и метку пустого пункта можно задать параметрами.
+     *
+     * @see Resource::dropdown()
+     */
+    #[Test]
+    public function dropdownUsesEmptyValueAndLabelParameters(): void
+    {
+        $options = Resource::dropdown(StatusEnum::class, emptyValue: null, emptyLabel: 'Не выбрано');
+
+        $this->assertSame(['value' => null, 'label' => 'Не выбрано'], $options[0]);
+        $this->assertSame('active', $options[1]['value']);
+    }
+
+    /**
      * Проверяет, что dropdown выбрасывает исключение для некорректного источника.
      *
      * @see Resource::dropdown()
@@ -158,7 +194,7 @@ final class ResourceDropdownTest extends TestCase
     {
         $this->expectException(InvalidArgumentException::class);
 
-        // Некорректный источник не реализует DropdownAwareInterface.
+        // Строка не является классом со статическим dropdown().
         Resource::dropdown('invalid');
     }
 }
