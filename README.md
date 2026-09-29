@@ -31,7 +31,7 @@ $user = ['id' => 10, 'email' => 'demo@example.com'];
 
 $response = ApiResponse::success(new UserResource($user));
 
-return $response->toArray();
+return $response; // JsonSerializable: meta и errors.fields в JSON всегда объекты
 ```
 
 ## Документация
@@ -41,6 +41,9 @@ return $response->toArray();
 - [docs/03-errors.md](docs/03-errors.md) — формат ошибок и ErrorBag
 - [docs/04-conditional.md](docs/04-conditional.md) — условные атрибуты
 - [docs/05-transformers.md](docs/05-transformers.md) — registry и финальная сериализация
+
+`json_encode($resource)` сериализует ресурс через `ResourceSerializer` (скрытые поля не попадают в JSON),
+`when*`/`require*` вызывают только `Closure`, а `Resource::dropdown()` принимает и имя enum-класса.
 
 `Resource::through()` позволяет обогащать уже сериализованный payload через
 callable или `ResourcePayloadTransformerInterface`, не меняя сам ресурс.

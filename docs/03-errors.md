@@ -12,6 +12,9 @@
 }
 ```
 
+`fields` в JSON всегда объект: при отсутствии ошибок по полям выводится `"fields": {}`
+(`ErrorBag::jsonSerialize()`); `toArray()` возвращает PHP-массив.
+
 ## ErrorBag
 
 ```php

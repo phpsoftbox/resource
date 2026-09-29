@@ -16,6 +16,11 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
+use function json_encode;
+
+use const JSON_THROW_ON_ERROR;
+use const JSON_UNESCAPED_UNICODE;
+
 #[CoversClass(ApiResponse::class)]
 #[CoversClass(ErrorBag::class)]
 final class ApiResponseTest extends TestCase
@@ -201,6 +206,52 @@ final class ApiResponseTest extends TestCase
         self::assertSame(
             ['id' => 1, 'transformed' => true],
             $response->toArray()['data'],
+        );
+    }
+
+    /**
+     * Проверяет, что пустая meta в JSON выводится объектом `{}`, а не массивом `[]`.
+     *
+     * @see ApiResponse::jsonSerialize()
+     */
+    #[Test]
+    public function jsonEncodeOutputsEmptyMetaAsObject(): void
+    {
+        $response = ApiResponse::success(['id' => 1]);
+
+        self::assertSame('{"data":{"id":1},"meta":{},"errors":null}', json_encode($response, JSON_THROW_ON_ERROR));
+    }
+
+    /**
+     * Проверяет, что пустые errors.fields в JSON выводятся объектом `{}`.
+     *
+     * @see ApiResponse::jsonSerialize()
+     * @see ErrorBag::jsonSerialize()
+     */
+    #[Test]
+    public function jsonEncodeOutputsEmptyErrorFieldsAsObject(): void
+    {
+        $response = ApiResponse::error('Ошибка.');
+
+        self::assertSame(
+            '{"data":null,"meta":{},"errors":{"message":"Ошибка.","fields":{}}}',
+            json_encode($response, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
+        );
+    }
+
+    /**
+     * Проверяет, что непустые meta и errors.fields в JSON тоже остаются объектами.
+     *
+     * @see ApiResponse::jsonSerialize()
+     */
+    #[Test]
+    public function jsonEncodeOutputsFilledMetaAndErrorFieldsAsObjects(): void
+    {
+        $response = ApiResponse::error('Ошибка.', ['email' => 'Неверно.'], ['trace_id' => 'abc']);
+
+        self::assertSame(
+            '{"data":null,"meta":{"trace_id":"abc"},"errors":{"message":"Ошибка.","fields":{"email":["Неверно."]}}}',
+            json_encode($response, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
         );
     }
 }

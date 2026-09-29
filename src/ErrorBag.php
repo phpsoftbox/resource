@@ -29,9 +29,17 @@ final class ErrorBag implements JsonSerializable
         $this->fields = $this->normalizeFields($fields);
     }
 
+    /**
+     * В JSON `fields` всегда объект (`{}`), даже без ошибок по полям.
+     *
+     * @return array{message:string,fields:object,code?:string}
+     */
     public function jsonSerialize(): array
     {
-        return $this->toArray();
+        $out           = $this->toArray();
+        $out['fields'] = (object) $out['fields'];
+
+        return $out;
     }
 
     public function message(): string

@@ -18,7 +18,6 @@ use function get_debug_type;
 use function interface_exists;
 use function is_a;
 use function is_array;
-use function is_callable;
 use function is_iterable;
 use function is_object;
 use function method_exists;
@@ -46,13 +45,16 @@ abstract class Resource implements ResourceInterface
      */
     protected ?string $wrapper = null;
 
+    /**
+     * Сериализует ресурс через ResourceSerializer по умолчанию: скрытые поля (MissingValue) удаляются,
+     * вложенные ресурсы и обязательные значения нормализуются так же, как в ответах API.
+     *
+     * Зарегистрированные трансформеры и провайдер состояния отношений здесь недоступны — для них
+     * используйте настроенный ResourceSerializer явно.
+     */
     public function jsonSerialize(): mixed
     {
-        if ($this->resource === null) {
-            return null;
-        }
-
-        return $this->toArray();
+        return new ResourceSerializer()->serialize($this);
     }
 
     public function meta(): array
@@ -186,11 +188,14 @@ abstract class Resource implements ResourceInterface
 
     /**
      * Возвращает значение при истинном условии.
+     *
+     * Условие, значение и значение по умолчанию вызываются, только если это Closure: строки вроде
+     * "count" или "system" из данных ресурса возвращаются как есть и никогда не исполняются.
      */
-    protected function when(bool|callable $condition, mixed $value, mixed $default = null): mixed
+    protected function when(bool|Closure $condition, mixed $value, mixed $default = null): mixed
     {
         $defaultValue = func_num_args() === 3 ? $default : new MissingValue();
-        $result       = is_callable($condition) ? $condition($this->resource) : $condition;
+        $result       = $condition instanceof Closure ? $condition($this->resource) : $condition;
 
         if ($result) {
             return $this->resolveValue($value, $this->resource);
@@ -524,20 +529,26 @@ abstract class Resource implements ResourceInterface
     /**
      * Возвращает опции для выпадающего списка.
      *
+     * Источник — объект DropdownAwareInterface или имя класса со статическим dropdown()
+     * (например, enum); имя класса оборачивается в EnumDropdownSource.
+     *
+     * @param DropdownAwareInterface|class-string $dropdown
      * @param bool|array{value: string|int|null, label: string, meta?: array<string, mixed>} $prependEmpty
+     *                                                                                                     true — добавить пустой пункт из $emptyValue/$emptyLabel, массив — добавить указанный пункт.
      * @return array<int, array{value: string|int|null, label: string, meta?: array<string, mixed>}>
      */
-    public static function dropdown(DropdownAwareInterface|string $dropdown, bool|array $prependEmpty = true): array
-    {
-        if ($dropdown instanceof DropdownAwareInterface) {
-            $adapter = new ResourceDropdownAdapter($dropdown->dropdown());
-        } else {
-            throw new InvalidArgumentException('Dropdown source must implement DropdownAwareInterface or provide static dropdown().');
-        }
+    public static function dropdown(
+        DropdownAwareInterface|string $dropdown,
+        bool|array $prependEmpty = true,
+        string|int|null $emptyValue = 'all',
+        string $emptyLabel = 'Все',
+    ): array {
+        $source  = $dropdown instanceof DropdownAwareInterface ? $dropdown : new EnumDropdownSource($dropdown);
+        $adapter = new ResourceDropdownAdapter($source->dropdown());
 
         if ($prependEmpty !== false) {
             $empty = $prependEmpty === true
-                ? ['value' => 'all', 'label' => 'Все']
+                ? ['value' => $emptyValue, 'label' => $emptyLabel]
                 : $prependEmpty;
 
             $adapter = $adapter->prepend($empty);
@@ -580,9 +591,12 @@ abstract class Resource implements ResourceInterface
         return new ResourceCollection($items)->collects(static::class);
     }
 
+    /**
+     * Вызывает только Closure: callable-строки и массивы из данных не исполняются.
+     */
     private function resolveValue(mixed $value, mixed ...$args): mixed
     {
-        if (is_callable($value)) {
+        if ($value instanceof Closure) {
             return $value(...$args);
         }
 
